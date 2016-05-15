@@ -497,4 +497,12 @@ public class AccionesDeCliente {
     public String[] getPerfilesArray() throws JSONException {
         return data.getPerfiles();
     }
+    
+    public void close(){
+        try{
+            socket.close();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
 }

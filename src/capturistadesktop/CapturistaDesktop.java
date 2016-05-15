@@ -38,6 +38,7 @@ public class CapturistaDesktop {
             = "Debe proporcionar el host del servidor, el nombre "
             + "de usuario y la dirección de un archivo"
             + " que contenga la contraseña.";
+    private static boolean isRunning;
 
     /**
      * @param args the command line arguments
@@ -66,38 +67,48 @@ public class CapturistaDesktop {
                     accionesDeCliente.grabParticipant();
                     long tiempoFinal = new JSONObject(accionesDeCliente.consultaParametrosIniciales())
                             .getLong("tiempo_final");
-                    new Timer().schedule(new TimerTask(){ @Override public void run(){ LogProvider.logMessage("Capturista", "Votación terminada"); System.exit(0); } }, tiempoFinal);
+                    new Timer().schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            LogProvider.logMessage("Capturista", "Votación terminada");
+                            isRunning = false;
+                            accionesDeCliente.close();
+                        }
+                    }, tiempoFinal);
                     Scanner scanner = new Scanner(System.in);
                     String boleta;
                     Map<String, String> resultado;
                     int resultadoConexionParticipante;
-                    while (true) {
-                        System.out.print("Escriba la boleta: ");
-                        boleta = scanner.nextLine();
-                        resultado = accionesDeCliente.consultaBoleta(boleta);
-                        if (Integer.parseInt(resultado.get("veredicto")) != 0) {
-                            LogProvider.logMessage("Main Thread",
-                                    "Perfil: " + resultado.get("perfil"));
-                            resultadoConexionParticipante
-                                    = accionesDeCliente.conectaParticipante(boleta,
-                                            resultado.get("perfil"));
-                            LogProvider.logMessage("Main Thread", "Atención completa (código " + resultadoConexionParticipante + ")");
-                        } else {
-                            LogProvider.logMessage("Main Thread", "No pudimos validar la boleta esta vez, intente de nuevo por favor.");
+                    isRunning = true;
+                    while (isRunning) {
+                        try {
+                            System.out.print("Escriba la boleta: ");
+                            boleta = scanner.nextLine();
+                            resultado = accionesDeCliente.consultaBoleta(boleta);
+                            if (Integer.parseInt(resultado.get("veredicto")) != 0) {
+                                LogProvider.logMessage("Main Thread",
+                                        "Perfil: " + resultado.get("perfil"));
+                                resultadoConexionParticipante
+                                        = accionesDeCliente.conectaParticipante(boleta,
+                                                resultado.get("perfil"));
+                                LogProvider.logMessage("Main Thread", "Atención completa (código " + resultadoConexionParticipante + ")");
+                            } else {
+                                LogProvider.logMessage("Main Thread", "No pudimos validar la boleta esta vez, intente de nuevo por favor.");
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (NoSuchAlgorithmException | InvalidKeySpecException | JSONException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException ex) {
+                }catch (NoSuchAlgorithmException | InvalidKeySpecException | JSONException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException ex) {
                     Logger.getLogger(CapturistaDesktop.class.getName()).log(Level.SEVERE, null, ex);
                 }
-            } catch (IOException e) {
-                LogProvider.logMessage("Main Thread",
-                        "Tuvimos problemas al abrir el archivo de contraseña.");
-                System.exit(0);
+                } catch (IOException e) {
+                    LogProvider.logMessage("Main Thread",
+                            "Tuvimos problemas al abrir el archivo de contraseña.");
+                    System.exit(0);
+                }
             }
+            LogProvider.logMessage("Main Thread", "Terminamos.");
         }
-        LogProvider.logMessage("Main Thread", "Terminamos.");
-    }
 
-}
+    }
